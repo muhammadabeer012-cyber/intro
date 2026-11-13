@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Super Shooter</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#101629;color:white;
+ text-align:center;font-family:Arial;
+}
+h1{color:#ffcf40}
+.info{
+ display:flex;justify-content:space-around;
+ padding:12px;font-size:18px;
+}
+canvas{
+ width:96%;max-width:420px;
+ background:linear-gradient(#101d39,#344b6b);
+ border:3px solid #fff;border-radius:12px;
+ touch-action:manipulation;
+}
+button{
+ padding:14px 25px;margin:8px;
+ border:0;border-radius:12px;
+ background:#ffb52e;font-size:19px;
+ font-weight:bold;
+}
+</style>
+</head>
+<body>
+<h1>🔫 SUPER SHOOTER</h1>
+<div class="info">
+ <span>⭐ Score: <b id="score">0</b></span>
+ <span>❤️ Health: <b id="health">100</b></span>
+</div>
+<canvas id="game" width="420" height="600"></canvas>
+<p>👆 دشمنوں پر ٹیپ کرکے فائر کریں!</p>
+<button onclick="restart()">🔄 RESTART</button>
+
+<script>
+const c=document.getElementById("game");
+const ctx=c.getContext("2d");
+
+let targets=[],bullets=[],particles=[];
+let score=0,health=100,frame=0;
+let alive=true,gunX=210;
+let lastShot=0;
+
+function spawn(){
+ targets.push({
+  x:40+Math.random()*340,
+  y:-30,
+  speed:1.5+Math.random()*2,
+  size:22
+ });
+}
+
+function shoot(x,y){
+ if(!alive)return;
+ const now=Date.now();
+ if(now-lastShot<180)return;
+ lastShot=now;
+
+ bullets.push({x:gunX,y:515,vx:(x-gunX)*.035,
+ vy:-9});
+}
+
+function explosion(x,y){
+ for(let i=0;i<10;i++){
+  particles.push({
+   x,y,vx:(Math.random()-.5)*6,
+   vy:(Math.random()-.5)*6,
+   life:25
+  });
+ }
+}
+
+function drawGun(){
+ ctx.fillStyle="#9ba9bb";
+ ctx.fillRect(gunX-12,520,24,55);
+ ctx.fillStyle="#333";
+ ctx.fillRect(gunX-6,550,12,25);
+ ctx.fillStyle="#facc15";
+ ctx.fillRect(gunX-5,505,10,20);
+ ctx.font="32px Arial";
+ ctx.fillText("🔫",gunX-18,520);
+}
+
+function draw(){
+ if(!alive)return;
+ ctx.clearRect(0,0,420,600);
+
+ // Stars
+ for(let i=0;i<35;i++){
+  ctx.fillStyle="#ffffff";
+  ctx.fillRect((i*97)%420,(i*137+frame*0.5)%600,2,2);
+ }
+
+ // Ground
+ ctx.fillStyle="#23354d";
+ ctx.fillRect(0,565,420,35);
+
+ frame++;
+ if(frame%65===0)spawn();
+
+ // Targets
+ targets.forEach(t=>{
+  t.y+=t.speed;
+  ctx.font="42px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("👾",t.x,t.y);
+  if(t.y>565){
+   t.y=-100;
+   health-=15;
+  }
+ });
+
+ // Bullets
+ bullets.forEach(b=>{
+  b.x+=b.vx;b.y+=b.vy;
+  ctx.fillStyle="#ffec4a";
+  ctx.shadowColor="#ffb000";
+  ctx.shadowBlur=12;
+  ctx.beginPath();
+  ctx.arc(b.x,b.y,5,0,Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur=0;
+ });
+
+ // Hit detection
+ bullets.forEach(b=>{
+  targets.forEach(t=>{
+   if(!t.dead && Math.hypot(b.x-t.x,b.y-t.y)<32){
+    t.dead=true;
+    b.dead=true;
+    score+=10;
+    explosion(t.x,t.y);
+   }
+  });
+ });
+
+ targets=targets.filter(t=>!t.dead);
+ bullets=bullets.filter(b=>!b.dead&&b.y>0);
+
+ // Explosions
+ particles.forEach(p=>{
+  p.x+=p.vx;p.y+=p.vy;p.life--;
+  ctx.fillStyle="#ffb52e";
+  ctx.fillRect(p.x,p.y,5,5);
+ });
+ particles=particles.filter(p=>p.life>0);
+
+ drawGun();
+
+ document.getElementById("score").textContent=score;
+ document.getElementById("health").textContent=Math.max(0,health);
+
+ if(health<=0){
+  alive=false;
+  ctx.fillStyle="rgba(0,0,0,.8)";
+  ctx.fillRect(20,200,380,180);
+  ctx.fillStyle="#ffcf40";
+  ctx.font="bold 38px Arial";
+  ctx.fillText("GAME OVER",210,260);
+  ctx.fillStyle="white";
+  ctx.font="24px Arial";
+  ctx.fillText("Score: "+score,210,310);
+  ctx.font="18px Arial";
+  ctx.fillText("Press RESTART",210,345);
+  return;
+ }
+
+ requestAnimationFrame(draw);
+}
+
+c.addEventListener("pointerdown",e=>{
+ const r=c.getBoundingClientRect();
+ const x=(e.clientX-r.left)*420/r.width;
+ const y=(e.clientY-r.top)*600/r.height;
+ shoot(x,y);
+});
+
+function restart(){
+ targets=[];bullets=[];particles=[];
+ score=0;health=100;frame=0;
+ alive=true;lastShot=0;
+ gunX=210;
+ draw();
+}
+
+ctx.textAlign="center";
+draw();
+</script>
+</body>
+</html>
